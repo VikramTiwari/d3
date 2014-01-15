@@ -1,3 +1,5 @@
+import "../core/identity";
+import "../math/trigonometry";
 import "../scale/linear";
 import "../scale/scale";
 import "../selection/selection";
@@ -18,24 +20,23 @@ d3.svg.axis = function() {
     g.each(function() {
       var g = d3.select(this);
 
+      // Stash a snapshot of the new scale, and retrieve the old snapshot.
+      var scale0 = this.__chart__ || scale,
+          scale1 = this.__chart__ = scale.copy();
+
       // Ticks, or domain values for ordinal scales.
-      var ticks = tickValues == null ? (scale.ticks ? scale.ticks.apply(scale, tickArguments_) : scale.domain()) : tickValues,
-          tickFormat = tickFormat_ == null ? (scale.tickFormat ? scale.tickFormat.apply(scale, tickArguments_) : d3_identity) : tickFormat_,
-          tick = g.selectAll(".tick.major").data(ticks, d3_identity),
-          tickEnter = tick.enter().insert("g", ".domain").attr("class", "tick major").style("opacity", 1e-6),
-          tickExit = d3.transition(tick.exit()).style("opacity", 1e-6).remove(),
+      var ticks = tickValues == null ? (scale1.ticks ? scale1.ticks.apply(scale1, tickArguments_) : scale1.domain()) : tickValues,
+          tickFormat = tickFormat_ == null ? (scale1.tickFormat ? scale1.tickFormat.apply(scale1, tickArguments_) : d3_identity) : tickFormat_,
+          tick = g.selectAll(".tick").data(ticks, scale1),
+          tickEnter = tick.enter().insert("g", ".domain").attr("class", "tick").style("opacity", ε),
+          tickExit = d3.transition(tick.exit()).style("opacity", ε).remove(),
           tickUpdate = d3.transition(tick).style("opacity", 1),
           tickTransform;
 
       // Domain.
-      var range = d3_scaleRange(scale),
+      var range = d3_scaleRange(scale1),
           path = g.selectAll(".domain").data([0]),
           pathUpdate = (path.enter().append("path").attr("class", "domain"), d3.transition(path));
-
-      // Stash a snapshot of the new scale, and retrieve the old snapshot.
-      var scale1 = scale.copy(),
-          scale0 = this.__chart__ || scale1;
-      this.__chart__ = scale1;
 
       tickEnter.append("line");
       tickEnter.append("text");
@@ -89,24 +90,22 @@ d3.svg.axis = function() {
         }
       }
 
-      // For ordinal scales:
-      // - any entering ticks are undefined in the old scale
-      // - any exiting ticks are undefined in the new scale
-      // Therefore, we only need to transition updating ticks.
-      if (scale.rangeBand) {
-        var dx = scale1.rangeBand() / 2, x = function(d) { return scale1(d) + dx; };
-        tickEnter.call(tickTransform, x);
-        tickUpdate.call(tickTransform, x);
-      }
-
-      // For quantitative scales:
-      // - enter new ticks from the old scale
-      // - exit old ticks to the new scale
-      else {
-        tickEnter.call(tickTransform, scale0);
-        tickUpdate.call(tickTransform, scale1);
+      // If either the new or old scale is ordinal,
+      // entering ticks are undefined in the old scale,
+      // and so can fade-in in the new scale’s position.
+      // Exiting ticks are likewise undefined in the new scale,
+      // and so can fade-out in the old scale’s position.
+      if (scale1.rangeBand) {
+        var x = scale1, dx = x.rangeBand() / 2;
+        scale0 = scale1 = function(d) { return x(d) + dx; };
+      } else if (scale0.rangeBand) {
+        scale0 = scale1;
+      } else {
         tickExit.call(tickTransform, scale1);
       }
+
+      tickEnter.call(tickTransform, scale0);
+      tickUpdate.call(tickTransform, scale1);
     });
   }
 

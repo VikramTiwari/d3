@@ -65,6 +65,8 @@ suite.addBatch({
       assert.strictEqual(f(-42), "-4.2e+1");
       assert.strictEqual(f(-4200000), "-4.2e+6");
       assert.strictEqual(f(-42000000), "-4.2e+7");
+      assert.strictEqual(format(".0e")(42), "4e+1")
+      assert.strictEqual(format(".3e")(42), "4.200e+1")
     },
     "can output SI prefix notation": function(format) {
       var f = format("s");
@@ -320,6 +322,16 @@ suite.addBatch({
       assert.strictEqual(format("=+8,d")(0), "+      0");
       assert.strictEqual(format("=+13,d")(0), "+           0");
       assert.strictEqual(format("=+21,d")(0), "+                   0");
+    },
+    "pad after sign with currency": function(format) {
+      assert.strictEqual(format("=+$1,d")(0), "+$0");
+      assert.strictEqual(format("=+$1,d")(0), "+$0");
+      assert.strictEqual(format("=+$2,d")(0), "+$0");
+      assert.strictEqual(format("=+$3,d")(0), "+$0");
+      assert.strictEqual(format("=+$5,d")(0), "+$  0");
+      assert.strictEqual(format("=+$8,d")(0), "+$     0");
+      assert.strictEqual(format("=+$13,d")(0), "+$          0");
+      assert.strictEqual(format("=+$21,d")(0), "+$                  0");
     },
     "a space can denote positive numbers": function(format) {
       assert.strictEqual(format(" 1,d")(-1), "-1");

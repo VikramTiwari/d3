@@ -43,6 +43,11 @@ suite.addBatch({
       "nicing a polylinear domain only affects the extent": function(linear) {
         var x = linear().domain([local(2009, 0, 1, 0, 12), local(2009, 0, 1, 23, 48), local(2009, 0, 2, 23, 48)]).nice(_.time.day);
         assert.deepEqual(x.domain(), [local(2009, 0, 1), local(2009, 0, 1, 23, 48), local(2009, 0, 3)]);
+      },
+      "nice succeeds on sub-second intervals": function(scale) {
+        var domain = [local(2013, 0, 1, 12, 0, 0), local(2013, 0, 1, 12, 0, 8)];
+        var x = scale().domain(domain);
+        assert.deepEqual(x.nice().domain(), domain);
       }
     },
 
@@ -313,6 +318,10 @@ suite.addBatch({
           local(1500, 0, 1, 0, 0),
           local(2000, 0, 1, 0, 0)
         ]);
+      },
+      "returns one tick for degenerate empty domain": function(scale) {
+        var x = scale().domain([local(2014, 2, 2), local(2014, 2, 2)]);
+        assert.deepEqual(x.ticks(6), [local(2014, 2, 2)]);
       }
     },
 
@@ -617,6 +626,10 @@ suite.addBatch({
           utc(1500, 0, 1, 0, 0),
           utc(2000, 0, 1, 0, 0)
         ]);
+      },
+      "returns one tick for degenerate empty domain": function(scale) {
+        var x = scale().domain([utc(2014, 2, 2), utc(2014, 2, 2)]);
+        assert.deepEqual(x.ticks(6), [utc(2014, 2, 2)]);
       }
     },
 

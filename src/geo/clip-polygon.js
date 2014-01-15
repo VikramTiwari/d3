@@ -4,7 +4,7 @@ import "spherical";
 // General spherical polygon clipping algorithm: takes a polygon, cuts it into
 // visible line segments and rejoins the segments by interpolating along the
 // clip edge.
-function d3_geo_clipPolygon(segments, compare, inside, interpolate, listener) {
+function d3_geo_clipPolygon(segments, compare, clipStartInside, interpolate, listener) {
   var subject = [],
       clip = [];
 
@@ -23,14 +23,14 @@ function d3_geo_clipPolygon(segments, compare, inside, interpolate, listener) {
       return;
     }
 
-    var a = {point: p0, points: segment, other: null, visited: false, entry: true, subject: true},
-        b = {point: p0, points: [p0], other: a, visited: false, entry: false, subject: false};
-    a.other = b;
+    var a = new d3_geo_clipPolygonIntersection(p0, segment, null, true),
+        b = new d3_geo_clipPolygonIntersection(p0, null, a, false);
+    a.o = b;
     subject.push(a);
     clip.push(b);
-    a = {point: p1, points: [p1], other: null, visited: false, entry: false, subject: true};
-    b = {point: p1, points: [p1], other: a, visited: false, entry: true, subject: false};
-    a.other = b;
+    a = new d3_geo_clipPolygonIntersection(p1, segment, null, false);
+    b = new d3_geo_clipPolygonIntersection(p1, null, a, true);
+    a.o = b;
     subject.push(a);
     clip.push(b);
   });
@@ -39,41 +39,42 @@ function d3_geo_clipPolygon(segments, compare, inside, interpolate, listener) {
   d3_geo_clipPolygonLinkCircular(clip);
   if (!subject.length) return;
 
-  if (inside) for (var i = 1, e = !inside(clip[0].point), n = clip.length; i < n; ++i) {
-    clip[i].entry = (e = !e);
+  for (var i = 0, entry = clipStartInside, n = clip.length; i < n; ++i) {
+    clip[i].e = entry = !entry;
   }
 
   var start = subject[0],
-      current,
       points,
       point;
   while (1) {
     // Find first unvisited intersection.
-    current = start;
-    while (current.visited) if ((current = current.next) === start) return;
-    points = current.points;
+    var current = start,
+        isSubject = true;
+    while (current.v) if ((current = current.n) === start) return;
+    points = current.z;
     listener.lineStart();
     do {
-      current.visited = current.other.visited = true;
-      if (current.entry) {
-        if (current.subject) {
-          for (var i = 0; i < points.length; i++) listener.point((point = points[i])[0], point[1]);
+      current.v = current.o.v = true;
+      if (current.e) {
+        if (isSubject) {
+          for (var i = 0, n = points.length; i < n; ++i) listener.point((point = points[i])[0], point[1]);
         } else {
-          interpolate(current.point, current.next.point, 1, listener);
+          interpolate(current.x, current.n.x, 1, listener);
         }
-        current = current.next;
+        current = current.n;
       } else {
-        if (current.subject) {
-          points = current.prev.points;
-          for (var i = points.length; --i >= 0;) listener.point((point = points[i])[0], point[1]);
+        if (isSubject) {
+          points = current.p.z;
+          for (var i = points.length - 1; i >= 0; --i) listener.point((point = points[i])[0], point[1]);
         } else {
-          interpolate(current.point, current.prev.point, -1, listener);
+          interpolate(current.x, current.p.x, -1, listener);
         }
-        current = current.prev;
+        current = current.p;
       }
-      current = current.other;
-      points = current.points;
-    } while (!current.visited);
+      current = current.o;
+      points = current.z;
+      isSubject = !isSubject;
+    } while (!current.v);
     listener.lineEnd();
   }
 }
@@ -85,10 +86,19 @@ function d3_geo_clipPolygonLinkCircular(array) {
       a = array[0],
       b;
   while (++i < n) {
-    a.next = b = array[i];
-    b.prev = a;
+    a.n = b = array[i];
+    b.p = a;
     a = b;
   }
-  a.next = b = array[0];
-  b.prev = a;
+  a.n = b = array[0];
+  b.p = a;
+}
+
+function d3_geo_clipPolygonIntersection(point, points, other, entry) {
+  this.x = point;
+  this.z = points;
+  this.o = other; // another intersection
+  this.e = entry; // is an entry?
+  this.v = false; // visited
+  this.n = this.p = null; // next & previous
 }
